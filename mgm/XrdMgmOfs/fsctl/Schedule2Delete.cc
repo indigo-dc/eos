@@ -83,6 +83,7 @@
     }
     XrdMqMessage message("deletion");
     int ndeleted = 0;
+    int msgsize = 0;
     eos::mgm::FileSystem* fs = 0;
     XrdOucString receiver = "";
     XrdOucString msgbody = "mgm.cmd=drop";
@@ -130,6 +131,9 @@
           capability += fs->GetPath().c_str();
           capability += "&mgm.fids=";
           receiver = fs->GetQueue().c_str();
+
+          // Track the message size
+          msgsize = msgbody.length() + capability.length();
         }
       }
 
@@ -138,10 +142,33 @@
       XrdOucString sfid = "";
       XrdOucString hexfid = "";
       eos::common::FileId::Fid2Hex(*elem, hexfid);
+      std::shared_ptr<eos::IFileMD> fmd = gOFS->eosFileService->getFileMD(*elem);
+
+      // IDs within the list follow the pattern -- hexfid[:lpath:ctime]
       idlist += hexfid;
+      msgsize += hexfid.length() + 1;
+
+      if (fmd->hasAttribute("logicalpath")) {
+        eos::IFileMD::ctime_t ctime;
+        char buff[64];
+
+        std::string lpath = fmd->getAttribute("logicalpath");
+        fmd->getCTime(ctime);
+        sprintf(buff, "%ld", ctime.tv_sec);
+
+        idlist += ":";
+        idlist += lpath.c_str();
+        idlist += ":";
+        idlist += buff;
+
+        msgsize += lpath.length() + strlen(buff) + 2;
+      }
       idlist += ",";
 
-      if (ndeleted > 1024) {
+      // Segment the message into chunks of 1024 files
+      // or maximum 75% of MqMessage capacity
+      if (ndeleted > 1024 ||
+          msgsize > (0.75 * XrdMqClient::XrdMqMaxMessageLen)) {
         XrdOucString refcapability = capability;
         refcapability += idlist;
         XrdOucEnv incapability(refcapability.c_str());
@@ -166,6 +193,7 @@
         idlist = "";
         ndeleted = 0;
         msgbody = "mgm.cmd=drop";
+        msgsize = msgbody.length();
 
         if (capabilityenv) {
           delete capabilityenv;
