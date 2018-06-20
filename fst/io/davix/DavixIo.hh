@@ -349,7 +349,8 @@ public:
     friend class DavixIo;
 
   protected:
-    std::vector<std::string> found_files;
+    std::vector<std::string> files;
+    std::vector<std::string> directories;
 
   public:
     FtsHandle(const char* dirp) : FileIo::FtsHandle(dirp)
