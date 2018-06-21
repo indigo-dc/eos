@@ -148,7 +148,7 @@
       idlist += hexfid;
       msgsize += hexfid.length() + 1;
 
-      if (fmd->hasAttribute("logicalpath")) {
+      if (fmd && fmd->hasAttribute("logicalpath")) {
         eos::IFileMD::ctime_t ctime;
         char buff[64];
 
