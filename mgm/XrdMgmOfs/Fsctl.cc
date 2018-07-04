@@ -114,12 +114,12 @@ XrdMgmOfs::fsctl(const int cmd,
 
 /*----------------------------------------------------------------------------*/
 /*
- * @brief FS control funcition implementing the locate and plugin call
+ * @brief FS control function implementing the locate and plugin call
  *
  * @cmd operation to run (locate or plugin)
  * @args args for the operation
  * @error error object
- * @client XRootD authentication obeject
+ * @client XRootD authentication object
  *
  * This function locates files on the redirector. Additionally it is used in EOS
  * to implement many stateless operations like commit/drop a replica, stat
@@ -277,6 +277,11 @@ XrdMgmOfs::FSctl(const int cmd,
     // Return's meta data in env representation
     if (execmd == "getfmd") {
 #include "fsctl/Getfmd.cc"
+    }
+
+    // Inject an external file into the namespace
+    if (execmd == "inject") {
+#include "fsctl/Inject.cc"
     }
 
     // Stat a file/dir - this we always redirect to the RW master
