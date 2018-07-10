@@ -279,9 +279,9 @@ XrdMgmOfs::FSctl(const int cmd,
 #include "fsctl/Getfmd.cc"
     }
 
-    // Inject an external file into the namespace
-    if (execmd == "inject") {
-#include "fsctl/Inject.cc"
+    // Import an external file into the namespace
+    if (execmd == "import") {
+#include "fsctl/Import.cc"
     }
 
     // Stat a file/dir - this we always redirect to the RW master
