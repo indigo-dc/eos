@@ -578,7 +578,7 @@ private:
 #endif
 
 //------------------------------------------------------------------------------
-//! Class RWMutexReadLock
+//! Class RWMutexWriteLock
 //------------------------------------------------------------------------------
 class RWMutexWriteLock
 {
@@ -657,7 +657,7 @@ private:
 };
 
 //------------------------------------------------------------------------------
-//! RW Mutex prefereing the reader
+//! RW Mutex preferring the reader
 //------------------------------------------------------------------------------
 class RWMutexR : public RWMutex
 {
@@ -667,7 +667,7 @@ public:
 };
 
 //------------------------------------------------------------------------------
-//! RW Mutex prefereing the writerr
+//! RW Mutex preferring the writer
 //------------------------------------------------------------------------------
 class RWMutexW : public RWMutex
 {
