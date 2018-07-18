@@ -152,7 +152,8 @@
         eos::IFileMD::ctime_t ctime;
         char buff[64];
 
-        std::string lpath = fmd->getAttribute("logicalpath");
+        XrdOucString lpath;
+        eos::common::FileFsPath::GetPhysicalPath(fs->GetId(), fmd, lpath);
         fmd->getCTime(ctime);
         sprintf(buff, "%ld", ctime.tv_sec);
 
