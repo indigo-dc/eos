@@ -1255,7 +1255,7 @@ XrdFstOfs::_rem(const char* path, XrdOucErrInfo& error,
                        "open - no file system id in capability", path);
     }
 
-    if ((logicalpath = capOpaque->Get("mgm.logicalpath"))) {
+    if ((logicalpath = capOpaque->Get("mgm.lpath"))) {
       stime = capOpaque->Get("mgm.ctime");
       delctime = atol(stime.c_str());
     }
