@@ -97,6 +97,7 @@
 
           if (fmd->hasUnlinkedLocation(*id)) {
             fmd->removeLocation(*id);
+            eos::common::FileFsPath::RemovePhysicalPath(*id, fmd);
             updatestore = true;
           }
 
