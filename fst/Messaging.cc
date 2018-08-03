@@ -58,7 +58,7 @@ Messaging::Listen()
 }
 
 //------------------------------------------------------------------------------
-// Process incomming messages
+// Process incoming messages
 //------------------------------------------------------------------------------
 void
 Messaging::Process(XrdMqMessage* newmessage)
