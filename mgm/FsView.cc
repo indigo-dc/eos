@@ -2839,7 +2839,6 @@ FsView::ApplyFsConfig(const char* inkey, std::string& val)
   // Decoding setup
   CURL* curl = curl_easy_init();
   std::string sval;
-
   // Convert to map
   std::string key = inkey;
   std::map<std::string, std::string> configmap;
@@ -4121,23 +4120,6 @@ FsSpace::ResetDraining()
                         fs->GetString("stat.drainer").c_str());
       }
     }
-  }
-}
-
-//------------------------------------------------------------------------------
-// Reapply the configstatus for file systems to trigger eventually the
-// draining - for the central draining case
-//------------------------------------------------------------------------------
-void
-FsView::ReapplyConfigStatus()
-{
-  eos_info("reapplying config status");
-  eos::common::RWMutexReadLock view_rd_lock(ViewMutex);
-
-  for (auto it = mIdView.cbegin(); it != mIdView.cend(); ++it) {
-    auto fs = it->second;
-    auto cfg_status = fs->GetConfigStatus();
-    fs->SetConfigStatus(cfg_status);
   }
 }
 
