@@ -157,7 +157,7 @@ class Stat;
 class WFE;
 class LRU;
 class Fsck;
-class Master;
+class IMaster;
 class Messaging;
 class PathRouting;
 }
@@ -1529,8 +1529,9 @@ public:
   XrdSysMutex MgmHealMapMutex; ///< mutex protecting the heal map
 
   //! Master/Slave configuration/failover class
-  std::unique_ptr<Master> MasterPtr;
-  Master& MgmMaster;
+  std::unique_ptr<IMaster> mMaster;
+  //std::unique_ptr<Master> MasterPtr;
+  //Master& MgmMaster;
 
   //! Map storing the last time of a filesystem dump, this information is used
   //! to track filesystems which have not been checked decentral by an FST.

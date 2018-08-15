@@ -133,7 +133,7 @@ XrdMgmOfs::InitializeFileView()
       eos_notice("eos file view initialize3: %d seconds", t3 - t2);
       BootFileId = gOFS->eosFileService->getFirstFreeId();
 
-      if (MgmMaster.IsMaster()) {
+      if (mMaster->IsMaster()) {
         // create ../proc/<x> files
         XrdOucString procpathwhoami = MgmProcPath;
         procpathwhoami += "/whoami";
@@ -222,7 +222,7 @@ XrdMgmOfs::InitializeFileView()
       }
     }
 
-    if (!MgmMaster.IsMaster()) {
+    if (!mMaster->IsMaster()) {
       eos_static_info("msg=\"starting slave listener\"");
       struct stat f_buf;
       struct stat c_buf;
@@ -272,8 +272,8 @@ XrdMgmOfs::InitializeFileView()
     }
 
     time_t tstop = time(nullptr);
-    MgmMaster.MasterLog(eos_notice("eos namespace file loading stopped after %d "
-                                   "seconds", (tstop - tstart)));
+    mMaster->MasterLog(eos_notice("eos namespace file loading stopped after %d "
+                                  "seconds", (tstop - tstart)));
     {
       eos::common::RWMutexWriteLock lock(Access::gAccessMutex);
 
@@ -319,7 +319,7 @@ XrdMgmOfs::InitializeFileView()
   // Load all the quota nodes from the namespace
   Quota::LoadNodes();
 
-  if (MgmMaster.IsMaster() && Initialized == kBooted) {
+  if (mMaster->IsMaster() && Initialized == kBooted) {
     WFE::MoveFromRBackToQ();
   }
 
@@ -1419,7 +1419,6 @@ XrdMgmOfs::Configure(XrdSysError& Eroute)
   }
 
   ConfEngine->SetAutoSave(true);
-
   // Create comment log to save all proc commands executed with a comment
   mCommentLog = new eos::common::CommentLog("/var/log/eos/mgm/logbook.log");
 
@@ -1560,8 +1559,11 @@ XrdMgmOfs::Configure(XrdSysError& Eroute)
   // Initialize user mapping
   eos::common::Mapping::Init();
 
+  // @todo (esindril) crate the Master object depending on the type of namespace
+  // implementation
+
   // Initialize the master/slave class
-  if (!MgmMaster.Init()) {
+  if (!mMaster->Init()) {
     return 1;
   }
 
@@ -1593,7 +1595,7 @@ XrdMgmOfs::Configure(XrdSysError& Eroute)
   eos::common::RWMutex::AddOrderRule("Eos Mgm Mutexes", order);
 #endif
 
-  if (!MgmMaster.BootNamespace()) {
+  if (!mMaster->BootNamespace()) {
     return 1;
   }
 
@@ -1610,7 +1612,7 @@ XrdMgmOfs::Configure(XrdSysError& Eroute)
 
   // Check the '/' directory permissions
   if (!rootmd->getMode()) {
-    if (MgmMaster.IsMaster()) {
+    if (mMaster->IsMaster()) {
       // no permissions set yet
       try {
         rootmd->setMode(S_IFDIR | S_IRWXU | S_IROTH | S_IXOTH | S_IRGRP |
@@ -1629,7 +1631,7 @@ XrdMgmOfs::Configure(XrdSysError& Eroute)
 
   eos_info("/ permissions are %o", rootmd->getMode());
 
-  if (MgmMaster.IsMaster()) {
+  if (mMaster->IsMaster()) {
     // Create /eos/ and /eos/<instance>/ directories
     std::shared_ptr<eos::IContainerMD> eosmd;
 
@@ -1877,11 +1879,11 @@ XrdMgmOfs::Configure(XrdSysError& Eroute)
   }
 
   // Hook to the appropiate config file
-  XrdOucString stdOut;
-  XrdOucString stdErr;
+  std::string stdOut;
+  std::string stdErr;
 
-  if (!MgmMaster.ApplyMasterConfig(stdOut, stdErr,
-                                   Master::Transition::Type::kMasterToMaster)) {
+  if (!mMaster->ApplyMasterConfig(stdOut, stdErr,
+                                  Master::Transition::Type::kMasterToMaster)) {
     Eroute.Emsg("Config", "failed to apply master configuration");
     return 1;
   }
@@ -1979,7 +1981,7 @@ XrdMgmOfs::Configure(XrdSysError& Eroute)
   }
 
   // start the recycler garbage collection thread on a master machine
-  if ((MgmMaster.IsMaster()) && (!Recycler->Start())) {
+  if ((mMaster->IsMaster()) && (!Recycler->Start())) {
     eos_warning("msg=\"cannot start recycle thread\"");
   }
 

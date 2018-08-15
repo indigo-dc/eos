@@ -1631,9 +1631,9 @@ XrdMgmOfsFile::open(const char* inpath,
         return rcode;
       }
 
-      if (!gOFS->MgmMaster.IsMaster() && gOFS->MgmMaster.IsRemoteMasterOk()) {
+      if (!gOFS->mMaster->IsMaster() && gOFS->mMaster->IsRemoteMasterOk()) {
         // redirect ENONET to an alive remote master
-        redirectionhost = gOFS->MgmMaster.GetMasterHost();
+        redirectionhost = gOFS->mMaster->GetMasterHost();
         ecode = 1094;
         rcode = SFS_REDIRECT;
         error.setErrInfo(ecode, redirectionhost.c_str());
@@ -2454,12 +2454,13 @@ XrdMgmOfsFile::open(const char* inpath,
   } else {
     if (!isRW)  {
       eos::IFileMD::ctime_t mtime;
+
       try {
-	fmd->getMTime(mtime);
-	redirectionhost += "&mgm.mtime=";
-	std::string smtime;
-	smtime += std::to_string(mtime.tv_sec);
-	redirectionhost += smtime.c_str();
+        fmd->getMTime(mtime);
+        redirectionhost += "&mgm.mtime=";
+        std::string smtime;
+        smtime += std::to_string(mtime.tv_sec);
+        redirectionhost += smtime.c_str();
       } catch (eos::MDException& ex) {
       }
     }

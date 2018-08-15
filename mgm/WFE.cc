@@ -194,7 +194,7 @@ WFE::WFEr()
     }
 
     // only a master needs to run WFE
-    if (gOFS->MgmMaster.IsMaster() && IsEnabledWFE) {
+    if (gOFS->mMaster->IsMaster() && IsEnabledWFE) {
       // -------------------------------------------------------------------------
       // do a find
       // -------------------------------------------------------------------------
@@ -351,8 +351,8 @@ WFE::WFEr()
       }
     }
 
-    if (gOFS->MgmMaster.IsMaster() && (!cleanuptime ||
-                                       (cleanuptime < time(NULL)))) {
+    if (gOFS->mMaster->IsMaster() && (!cleanuptime ||
+                                      (cleanuptime < time(NULL)))) {
       time_t now = time(NULL);
       eos_static_info("msg=\"clean old workflows\"");
       XrdMgmOfsDirectory dir;

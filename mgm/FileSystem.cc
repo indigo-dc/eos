@@ -95,7 +95,7 @@ FileSystem::SetConfigStatus(eos::common::FileSystem::fsstatus_t new_status)
 {
   using eos::mgm::FsView;
 
-  if (gOFS->MasterPtr->IsActivated()) {
+  if (gOFS->mMaster->IsActivated()) {
     eos::common::FileSystem::fsstatus_t old_status = GetConfigStatus();
 
     if (gOFS->mIsCentralDrain) {
