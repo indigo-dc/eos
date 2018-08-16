@@ -1621,6 +1621,12 @@ private:
   //------------------------------------------------------------------------------
   void StopArchiveSubmitter();
 
+  //------------------------------------------------------------------------------
+  //! Setup MGM configuration directory
+  //!
+  //! @return true if successful, otherwise false
+  //------------------------------------------------------------------------------
+  bool SetupConfigDir();
 
   static std::string MacroStringError(int errcode);
 };
