@@ -163,7 +163,7 @@ XrdMgmOfs::XrdMgmOfs(XrdSysError* ep):
   ManagerPort(1094), LinuxStatsStartup{0},
   StartTime(0), HostName(0), HostPref(0), mInitialized(kDown), mFileInitTime(0),
   mTotalInitTime(0), Shutdown(false),
-  BootFileId(0), BootContainerId(0), IsRedirect(true), IsStall(true),
+  mBootFileId(0), mBootContainerId(0), IsRedirect(true), IsStall(true),
   mAuthorize(false), mAuthLib(""), IssueCapability(false), MgmRedirector(false),
   ErrorLog(true), eosDirectoryService(0), eosFileService(0), eosView(0),
   eosFsView(0), eosContainerAccounting(0), eosSyncTimeAccounting(0),
@@ -827,7 +827,6 @@ XrdMgmOfs::FuseXCastContainer(eos::ContainerIdentifier id)
 bool
 XrdMgmOfs::IsNsBooted() const
 {
-  XrdSysMutexHelper lock(InitializationMutex);
   return ((mInitialized == kBooted) || (mInitialized == kCompacting));
 }
 

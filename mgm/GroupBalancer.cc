@@ -621,27 +621,19 @@ GroupBalancer::GroupBalance()
   eos::common::Mapping::VirtualIdentity rootvid;
   eos::common::Mapping::Root(rootvid);
   XrdOucErrInfo error;
-  XrdSysThread::SetCancelOn();
-  bool go = false;
-
   // Wait for the namespace to boot
-  do {
-    XrdSysThread::SetCancelOff();
-    {
-      XrdSysMutexHelper lock(gOFS->InitializationMutex);
+  XrdSysThread::SetCancelOff();
 
-      if (gOFS->mInitialized == gOFS->kBooted) {
-        go = true;
-      }
-    }
+  while (gOFS->mInitialized != gOFS->kBooted) {
     XrdSysThread::SetCancelOn();
     std::this_thread::sleep_for(std::chrono::seconds(1));
-  } while (!go);
+    XrdSysThread::SetCancelOff();
+  }
 
   std::this_thread::sleep_for(std::chrono::seconds(10));
 
   // Loop forever until cancelled
-  while (1) {
+  while (true) {
     bool isSpaceGroupBalancer = true;
     bool isMaster = true;
     int nrTransfers = 0;

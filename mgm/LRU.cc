@@ -101,34 +101,21 @@ LRU::LRUr()
  */
 /*----------------------------------------------------------------------------*/
 {
-  // ---------------------------------------------------------------------------
-  // wait that the namespace is initialized
-  // ---------------------------------------------------------------------------
-  bool go = false;
+  // Wait for the namespace to boot
+  XrdSysThread::SetCancelDeferred();
 
-  do {
-    XrdSysThread::SetCancelOff();
-    {
-      XrdSysMutexHelper lock(gOFS->InitializationMutex);
-
-      if (gOFS->mInitialized == gOFS->kBooted) {
-        go = true;
-      }
-    }
-    XrdSysThread::SetCancelOn();
+  while (gOFS->mInitialized != gOFS->kBooted) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-  } while (!go);
+    XrdSysThread::CancelPoint();
+  }
 
   std::this_thread::sleep_for(std::chrono::seconds(10));
   // Eternal thread doing LRU scans
   time_t snoozetime = 60;
   eos_static_info("msg=\"async LRU thread started\"");
 
-  while (1) {
-    // -------------------------------------------------------------------------
+  while (true) {
     // every now and then we wake up
-    // -------------------------------------------------------------------------
-    XrdSysThread::SetCancelOff();
     bool IsEnabledLRU;
     time_t lLRUInterval;
     time_t lStartTime = time(NULL);
@@ -151,11 +138,9 @@ LRU::LRUr()
       }
     }
 
-    // only a master needs to run LRU
+    // Only a master needs to run LRU
     if (gOFS->mMaster->IsMaster() && IsEnabledLRU) {
-      // -------------------------------------------------------------------------
-      // do a slow find
-      // -------------------------------------------------------------------------
+      // Do a slow find
       unsigned long long ndirs =
         (unsigned long long) gOFS->eosDirectoryService->getNumContainers();
       time_t ms = 1;
@@ -172,42 +157,24 @@ LRU::LRUr()
       eos_static_info("msg=\"start LRU scan\" ndir=%llu ms=%u", ndirs, ms);
       std::map<std::string, std::set<std::string> > lrudirs;
       XrdOucString stdErr;
-      // -------------------------------------------------------------------------
-      // find all directories defining an LRU policy
-      // -------------------------------------------------------------------------
+      // Find all directories defining an LRU policy
       gOFS->MgmStats.Add("LRUFind", 0, 0, 1);
       EXEC_TIMING_BEGIN("LRUFind");
 
-      if (!gOFS->_find("/",
-                       mError,
-                       stdErr,
-                       mRootVid,
-                       lrudirs,
-                       gLRUPolicyPrefix,
-                       "*",
-                       true,
-                       ms,
-                       false
-                      )
+      if (!gOFS->_find("/", mError, stdErr, mRootVid, lrudirs, gLRUPolicyPrefix,
+                       "*", true, ms, false)
          ) {
         eos_static_info("msg=\"finished LRU find\" LRU-dirs=%llu",
-                        lrudirs.size()
-                       );
+                        lrudirs.size());
 
         // scan backwards ... in this way we get rid of empty directories in one go ...
         for (auto it = lrudirs.rbegin(); it != lrudirs.rend(); it++) {
-          // ---------------------------------------------------------------------
-          // get the attributes
-          // ---------------------------------------------------------------------
+          // Get the attributes
           eos_static_info("lru-dir=\"%s\"", it->first.c_str());
           eos::IContainerMD::XAttrMap map;
 
-          if (!gOFS->_attr_ls(it->first.c_str(),
-                              mError,
-                              mRootVid,
-                              (const char*) 0,
-                              map)
-             ) {
+          if (!gOFS->_attr_ls(it->first.c_str(), mError, mRootVid,
+                              (const char*) 0, map)) {
             // -------------------------------------------------------------------
             // sort out the individual LRU policies
             // -------------------------------------------------------------------
@@ -246,14 +213,12 @@ LRU::LRUr()
           }
         }
 
-        XrdSysThread::SetCancelOn();
-        XrdSysThread::SetCancelOff();
+        XrdSysThread::CancelPoint();
       }
 
       EXEC_TIMING_END("LRUFind");
       eos_static_info("msg=\"finished LRU application\" LRU-dirs=%llu",
-                      lrudirs.size()
-                     );
+                      lrudirs.size());
     }
 
     lStopTime = time(NULL);
@@ -285,8 +250,9 @@ LRU::LRUr()
         }
       }
     }
-  };
+  }
 
+  XrdSysThread::SetCancelOn();
   return 0;
 }
 

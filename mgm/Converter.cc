@@ -361,22 +361,13 @@ Converter::Convert(void)
   eos::common::Mapping::VirtualIdentity rootvid;
   eos::common::Mapping::Root(rootvid);
   XrdOucErrInfo error;
-  XrdSysThread::SetCancelOn();
-  // Wait that the namespace is initialized
-  bool go = false;
+  // Wait for the namespace to boot
+  XrdSysThread::SetCancelDeferred();
 
-  do {
-    XrdSysThread::SetCancelOff();
-    {
-      XrdSysMutexHelper lock(gOFS->InitializationMutex);
-
-      if (gOFS->mInitialized == gOFS->kBooted) {
-        go = true;
-      }
-    }
-    XrdSysThread::SetCancelOn();
+  while (gOFS->mInitialized != gOFS->kBooted) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-  } while (!go);
+    XrdSysThread::CancelPoint();
+  }
 
   std::this_thread::sleep_for(std::chrono::seconds(10));
 
@@ -390,7 +381,7 @@ Converter::Convert(void)
   // the parent container of the fid
   std::map<eos::common::FileId::fileid_t, std::string> lConversionFidMap;
 
-  while (1) {
+  while (true) {
     bool IsSpaceConverter = true;
     bool IsMaster = true;
     int lSpaceTransfers = 0;
@@ -403,8 +394,6 @@ Converter::Convert(void)
       while (!FsView::gFsView.ViewMutex.TimedRdLock(timeout_ns)) {
         XrdSysThread::CancelPoint();
       }
-
-      XrdSysThread::SetCancelOff();
 
       if (!FsView::gFsView.mSpaceGroupView.count(mSpaceName.c_str())) {
         FsView::gFsView.ViewMutex.UnLockRead();
@@ -538,7 +527,6 @@ Converter::Convert(void)
       }
     }
 
-    XrdSysThread::SetCancelOn();
     // Let some time pass or wait for a notification
     mDoneSignal.Wait(10);
     XrdSysThread::CancelPoint();

@@ -580,43 +580,27 @@ GeoBalancer::prepareTransfers(int nrTransfers)
   }
 }
 
-/*----------------------------------------------------------------------------*/
+//------------------------------------------------------------------------------
+//! @brief eternal loop trying to run conversion jobs
+//------------------------------------------------------------------------------
 void*
 GeoBalancer::GeoBalance()
-/*----------------------------------------------------------------------------*/
-/**
- * @brief eternal loop trying to run conversion jobs
- */
-/*----------------------------------------------------------------------------*/
 {
   eos::common::Mapping::VirtualIdentity rootvid;
   eos::common::Mapping::Root(rootvid);
   XrdOucErrInfo error;
-  XrdSysThread::SetCancelOn();
-  // ---------------------------------------------------------------------------
-  // wait that the namespace is initialized
-  // ---------------------------------------------------------------------------
-  bool go = false;
+  // Wait for the namespace to boot
+  XrdSysThread::SetCancelDeferred();
 
-  do {
-    XrdSysThread::SetCancelOff();
-    {
-      XrdSysMutexHelper lock(gOFS->InitializationMutex);
-
-      if (gOFS->mInitialized == gOFS->kBooted) {
-        go = true;
-      }
-    }
-    XrdSysThread::SetCancelOn();
+  while (gOFS->mInitialized != gOFS->kBooted) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-  } while (!go);
+    XrdSysThread::CancelPoint();
+  }
 
   std::this_thread::sleep_for(std::chrono::seconds(10));
 
-  // ---------------------------------------------------------------------------
-  // loop forever until cancelled
-  // ---------------------------------------------------------------------------
-  while (1) {
+  // Loop forever until cancelled
+  while (true) {
     bool isSpaceGeoBalancer = true;
     bool isMaster = true;
     int nrTransfers = 0;
@@ -630,7 +614,6 @@ GeoBalancer::GeoBalance()
         XrdSysThread::CancelPoint();
       }
 
-      XrdSysThread::SetCancelOff();
       FsSpace* space = FsView::gFsView.mSpaceView[mSpaceName.c_str()];
 
       if (space->GetConfigMember("converter") != "on") {
@@ -676,14 +659,12 @@ GeoBalancer::GeoBalance()
     }
 
 wait:
-    XrdSysThread::SetCancelOn();
-    // -------------------------------------------------------------------------
     // Let some time pass or wait for a notification
-    // -------------------------------------------------------------------------
     std::this_thread::sleep_for(std::chrono::seconds(10));
     XrdSysThread::CancelPoint();
   }
 
+  XrdSysThread::SetCancelOn();
   return 0;
 }
 

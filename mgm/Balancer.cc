@@ -75,22 +75,13 @@ Balancer::StaticBalance(void* arg)
 void*
 Balancer::Balance(void)
 {
-  XrdSysThread::SetCancelOn();
-  // Wait that the namespace is initialized
-  bool go = false;
+  // Wait for the namespace to boot
+  XrdSysThread::SetCancelDeferred();
 
-  do {
-    XrdSysThread::SetCancelOff();
-    {
-      XrdSysMutexHelper lock(gOFS->InitializationMutex);
-
-      if (gOFS->mInitialized == gOFS->kBooted) {
-        go = true;
-      }
-    }
-    XrdSysThread::SetCancelOn();
+  while (gOFS->mInitialized != gOFS->kBooted) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-  } while (!go);
+    XrdSysThread::CancelPoint();
+  }
 
   // Loop forever until cancelled
   while (true) {
@@ -107,8 +98,6 @@ Balancer::Balance(void)
     while (!FsView::gFsView.ViewMutex.TimedRdLock(timeout_ns)) {
       XrdSysThread::CancelPoint();
     }
-
-    XrdSysThread::SetCancelOff();
 
     if (!FsView::gFsView.mSpaceGroupView.count(mSpaceName.c_str())) {
       FsView::gFsView.ViewMutex.UnLockRead();
@@ -299,7 +288,6 @@ Balancer::Balance(void)
     }
 
     FsView::gFsView.ViewMutex.UnLockRead();
-    XrdSysThread::SetCancelOn();
 
     // Wait a while ...
     for (size_t i = 0; i < 10; ++i) {
@@ -308,6 +296,7 @@ Balancer::Balance(void)
     }
   }
 
+  XrdSysThread::SetCancelOn();
   return 0;
 }
 
