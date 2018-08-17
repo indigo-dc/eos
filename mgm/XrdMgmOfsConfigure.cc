@@ -94,7 +94,6 @@ XrdMgmOfs::InitializeFileView()
     XrdSysMutexHelper lock(InitializationMutex);
     mInitialized = kBooting;
     mFileInitTime = time(0);
-    RemoveStallRuleAfterBoot = false;
     BootFileId = 0;
   }
   time_t tstart = time(0);
@@ -106,13 +105,9 @@ XrdMgmOfs::InitializeFileView()
     eos::common::RWMutexWriteLock lock(Access::gAccessMutex);
 
     if (Access::gStallRules.count(std::string("*"))) {
-      if (!RemoveStallRuleAfterBoot) {
-        oldstallrule = Access::gStallRules[std::string("*")];
-        oldstallcomment = Access::gStallComment[std::string("*")];
-        oldstallglobal = Access::gStallGlobal;
-      } else {
-        RemoveStallRuleAfterBoot = false;
-      }
+      oldstallrule = Access::gStallRules[std::string("*")];
+      oldstallcomment = Access::gStallComment[std::string("*")];
+      oldstallglobal = Access::gStallGlobal;
     }
 
     Access::gStallRules[std::string("*")] = "100";
