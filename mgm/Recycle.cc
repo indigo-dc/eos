@@ -111,7 +111,7 @@ Recycle::Recycler()
     {
       XrdSysMutexHelper lock(gOFS->InitializationMutex);
 
-      if (gOFS->Initialized == gOFS->kBooted) {
+      if (gOFS->mInitialized == gOFS->kBooted) {
         go = true;
       }
     }

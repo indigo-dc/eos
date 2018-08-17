@@ -633,7 +633,7 @@ Master::Compacting()
       {
         XrdSysMutexHelper lock(gOFS->InitializationMutex);
 
-        if (gOFS->Initialized == gOFS->kBooted) {
+        if (gOFS->mInitialized == gOFS->kBooted) {
           go = true;
         }
       }
@@ -664,7 +664,7 @@ Master::Compacting()
       eos_alert("msg=\"online-compacting running\"");
       {
         XrdSysMutexHelper lock(gOFS->InitializationMutex);
-        gOFS->Initialized = XrdMgmOfs::kCompacting;
+        gOFS->mInitialized = XrdMgmOfs::kCompacting;
       }
       eos_notice("msg=\"starting online compaction\"");
       time_t now = time(nullptr);
@@ -880,7 +880,7 @@ Master::Compacting()
       {
         // Change from kCompacting to kBooted
         XrdSysMutexHelper lock(gOFS->InitializationMutex);
-        gOFS->Initialized = XrdMgmOfs::kBooted;
+        gOFS->mInitialized = XrdMgmOfs::kBooted;
       }
 
       {
@@ -1659,7 +1659,7 @@ Master::MasterRO2Slave()
   {
     XrdSysMutexHelper lock(gOFS->InitializationMutex);
 
-    if (gOFS->Initialized == gOFS->kBooted) {
+    if (gOFS->mInitialized == gOFS->kBooted) {
       // Inform the boot thread that the stall should be removed after boot
       gOFS->RemoveStallRuleAfterBoot = true;
       // Start the file view loader thread
@@ -2262,7 +2262,7 @@ Master::RebootSlaveNamespace()
   {
     {
       XrdSysMutexHelper lock(gOFS->InitializationMutex);
-      gOFS->Initialized = gOFS->kBooting;
+      gOFS->mInitialized = gOFS->kBooting;
     }
     // now convert the namespace
     eos::common::RWMutexWriteLock nsLock(gOFS->eosViewRWMutex);
@@ -2301,20 +2301,20 @@ Master::RebootSlaveNamespace()
       fRunningState = Run::State::kIsNothing;
       {
         XrdSysMutexHelper lock(gOFS->InitializationMutex);
-        gOFS->Initialized = gOFS->kFailed;
+        gOFS->mInitialized = gOFS->kFailed;
       }
       return false;
     }
 
     {
       XrdSysMutexHelper lock(gOFS->InitializationMutex);
-      gOFS->Initialized = gOFS->kBooted;
+      gOFS->mInitialized = gOFS->kBooted;
     }
   }
   {
     XrdSysMutexHelper lock(gOFS->InitializationMutex);
 
-    if (gOFS->Initialized == gOFS->kBooted) {
+    if (gOFS->mInitialized == gOFS->kBooted) {
       // Inform the boot thread that the stall should be removed after boot
       gOFS->RemoveStallRuleAfterBoot = true;
       // Start the file view loader thread
