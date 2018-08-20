@@ -88,10 +88,11 @@ XrdMgmOfs::InitializeFileView()
   mInitialized = kBooting;
   mFileInitTime = time(0);
   time_t tstart = time(0);
+  Access::StallInfo old_stall;
+  Access::StallInfo new_stall("*", "100", "namespace is booting", true);
   std::string oldstallrule;
   std::string oldstallcomment;
   bool oldstallglobal = false;
-  // set the client stall
   {
     eos::common::RWMutexWriteLock lock(Access::gAccessMutex);
 
@@ -122,86 +123,7 @@ XrdMgmOfs::InitializeFileView()
       mBootFileId = gOFS->eosFileService->getFirstFreeId();
 
       if (mMaster->IsMaster()) {
-        // create ../proc/<x> files
-        XrdOucString procpathwhoami = MgmProcPath;
-        procpathwhoami += "/whoami";
-        XrdOucString procpathwho = MgmProcPath;
-        procpathwho += "/who";
-        XrdOucString procpathquota = MgmProcPath;
-        procpathquota += "/quota";
-        XrdOucString procpathreconnect = MgmProcPath;
-        procpathreconnect += "/reconnect";
-        XrdOucString procpathmaster = MgmProcPath;
-        procpathmaster += "/master";
-        XrdOucErrInfo error;
-        eos::common::Mapping::VirtualIdentity vid;
-        eos::common::Mapping::Root(vid);
-        std::shared_ptr<eos::IFileMD> fmd;
-
-        try {
-          fmd.reset();
-          fmd = eosView->getFile(procpathwhoami.c_str());
-        } catch (eos::MDException& e) {
-          fmd = eosView->createFile(procpathwhoami.c_str(), 0, 0);
-        }
-
-        if (fmd) {
-          fmd->setSize(4096);
-          fmd->setAttribute("sys.proc", "mgm.cmd=whoami&mgm.format=fuse");
-          eosView->updateFileStore(fmd.get());
-        }
-
-        try {
-          fmd.reset();
-          fmd = eosView->getFile(procpathwho.c_str());
-        } catch (eos::MDException& e) {
-          fmd = eosView->createFile(procpathwho.c_str(), 0, 0);
-        }
-
-        if (fmd) {
-          fmd->setSize(4096);
-          fmd->setAttribute("sys.proc", "mgm.cmd=who&mgm.format=fuse");
-          eosView->updateFileStore(fmd.get());
-        }
-
-        try {
-          fmd.reset();
-          fmd = eosView->getFile(procpathquota.c_str());
-        } catch (eos::MDException& e) {
-          fmd = eosView->createFile(procpathquota.c_str(), 0, 0);
-        }
-
-        if (fmd) {
-          fmd->setSize(4096);
-          fmd->setAttribute("sys.proc",
-                            "mgm.cmd=quota&mgm.subcmd=lsuser&mgm.format=fuse");
-          eosView->updateFileStore(fmd.get());
-        }
-
-        try {
-          fmd.reset();
-          fmd = eosView->getFile(procpathreconnect.c_str());
-        } catch (eos::MDException& e) {
-          fmd = eosView->createFile(procpathreconnect.c_str(), 0, 0);
-        }
-
-        if (fmd) {
-          fmd->setSize(4096);
-          eosView->updateFileStore(fmd.get());
-        }
-
-        try {
-          fmd.reset();
-          fmd = eosView->getFile(procpathmaster.c_str());
-        } catch (eos::MDException& e) {
-          fmd = eosView->createFile(procpathmaster.c_str(), 0, 0);
-        }
-
-        if (fmd) {
-          fmd->setSize(4096);
-          eosView->updateFileStore(fmd.get());
-        }
-
+        SetupProcFiles();
         mInitialized = kBooted;
         eos_static_alert("msg=\"namespace booted (as master)\"");
       }
@@ -302,6 +224,9 @@ XrdMgmOfs::InitializeFileView()
   return nullptr;
 }
 
+//------------------------------------------------------------------------------
+// Start jemalloc heap profiling
+//------------------------------------------------------------------------------
 void XrdMgmOfs::StartHeapProfiling(int sig)
 {
   if (!gOFS->mJeMallocHandler->CanProfile()) {
@@ -316,6 +241,9 @@ void XrdMgmOfs::StartHeapProfiling(int sig)
   }
 }
 
+//------------------------------------------------------------------------------
+// Stop jemalloc heap profiling
+//------------------------------------------------------------------------------
 void XrdMgmOfs::StopHeapProfiling(int sig)
 {
   if (!gOFS->mJeMallocHandler->CanProfile()) {
@@ -330,6 +258,9 @@ void XrdMgmOfs::StopHeapProfiling(int sig)
   }
 }
 
+//------------------------------------------------------------------------------
+// Dump jemalloc heap profiling info
+//------------------------------------------------------------------------------
 void XrdMgmOfs::DumpHeapProfile(int sig)
 {
   if (!gOFS->mJeMallocHandler->ProfRunning()) {
@@ -344,7 +275,9 @@ void XrdMgmOfs::DumpHeapProfile(int sig)
   }
 }
 
-/*----------------------------------------------------------------------------*/
+//------------------------------------------------------------------------------
+// Configure the MGM daemon by parsing info in xrd.cf.mgm
+//------------------------------------------------------------------------------
 int
 XrdMgmOfs::Configure(XrdSysError& Eroute)
 {
@@ -2244,4 +2177,90 @@ XrdMgmOfs::SetupConfigDir()
   }
 
   return true;
+}
+
+//------------------------------------------------------------------------------
+// Setup /eos/<instance>/proc files
+//------------------------------------------------------------------------------
+void
+XrdMgmOfs::SetupProcFiles()
+{
+  XrdOucString procpathwhoami = MgmProcPath;
+  procpathwhoami += "/whoami";
+  XrdOucString procpathwho = MgmProcPath;
+  procpathwho += "/who";
+  XrdOucString procpathquota = MgmProcPath;
+  procpathquota += "/quota";
+  XrdOucString procpathreconnect = MgmProcPath;
+  procpathreconnect += "/reconnect";
+  XrdOucString procpathmaster = MgmProcPath;
+  procpathmaster += "/master";
+  XrdOucErrInfo error;
+  eos::common::Mapping::VirtualIdentity vid;
+  eos::common::Mapping::Root(vid);
+  std::shared_ptr<eos::IFileMD> fmd;
+
+  try {
+    fmd.reset();
+    fmd = eosView->getFile(procpathwhoami.c_str());
+  } catch (eos::MDException& e) {
+    fmd = eosView->createFile(procpathwhoami.c_str(), 0, 0);
+  }
+
+  if (fmd) {
+    fmd->setSize(4096);
+    fmd->setAttribute("sys.proc", "mgm.cmd=whoami&mgm.format=fuse");
+    eosView->updateFileStore(fmd.get());
+  }
+
+  try {
+    fmd.reset();
+    fmd = eosView->getFile(procpathwho.c_str());
+  } catch (eos::MDException& e) {
+    fmd = eosView->createFile(procpathwho.c_str(), 0, 0);
+  }
+
+  if (fmd) {
+    fmd->setSize(4096);
+    fmd->setAttribute("sys.proc", "mgm.cmd=who&mgm.format=fuse");
+    eosView->updateFileStore(fmd.get());
+  }
+
+  try {
+    fmd.reset();
+    fmd = eosView->getFile(procpathquota.c_str());
+  } catch (eos::MDException& e) {
+    fmd = eosView->createFile(procpathquota.c_str(), 0, 0);
+  }
+
+  if (fmd) {
+    fmd->setSize(4096);
+    fmd->setAttribute("sys.proc",
+                      "mgm.cmd=quota&mgm.subcmd=lsuser&mgm.format=fuse");
+    eosView->updateFileStore(fmd.get());
+  }
+
+  try {
+    fmd.reset();
+    fmd = eosView->getFile(procpathreconnect.c_str());
+  } catch (eos::MDException& e) {
+    fmd = eosView->createFile(procpathreconnect.c_str(), 0, 0);
+  }
+
+  if (fmd) {
+    fmd->setSize(4096);
+    eosView->updateFileStore(fmd.get());
+  }
+
+  try {
+    fmd.reset();
+    fmd = eosView->getFile(procpathmaster.c_str());
+  } catch (eos::MDException& e) {
+    fmd = eosView->createFile(procpathmaster.c_str(), 0, 0);
+  }
+
+  if (fmd) {
+    fmd->setSize(4096);
+    eosView->updateFileStore(fmd.get());
+  }
 }
