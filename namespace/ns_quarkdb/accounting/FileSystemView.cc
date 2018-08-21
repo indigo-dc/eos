@@ -36,7 +36,7 @@ EOSNSNAMESPACE_BEGIN
 // Constructor
 //------------------------------------------------------------------------------
 FileSystemView::FileSystemView():
-  mExecutor(new folly::IOThreadPoolExecutor(8) ), pFlusher(nullptr), pQcl(nullptr)
+  mExecutor(new folly::IOThreadPoolExecutor(8)), pFlusher(nullptr), pQcl(nullptr)
 { }
 
 //------------------------------------------------------------------------------
@@ -53,13 +53,12 @@ FileSystemView::configure(const std::map<std::string, std::string>& config)
   if ((pQcl == nullptr) && (pFlusher == nullptr)) {
     QdbContactDetails contactDetails = ConfigurationParser::parse(config);
 
-    if(config.find(key_flusher) == config.end()) {
+    if (config.find(key_flusher) == config.end()) {
       throw_mdexception(EINVAL, __FUNCTION__ << "No " << key_flusher
                         << " configuration was provided");
     }
 
     std::string qdb_flusher_id = config.at(key_flusher);
-
     pQcl = BackendClient::getInstance(contactDetails);
     pFlusher = MetadataFlusherFactory::getInstance(qdb_flusher_id, contactDetails);
   }
@@ -68,10 +67,10 @@ FileSystemView::configure(const std::map<std::string, std::string>& config)
   loadFromBackend();
   auto end = std::time(nullptr);
   std::chrono::seconds duration(end - start);
-  std::cerr << "FileSystemView loadingFromBackend duration: "
-            << duration.count() << " seconds" << std::endl;
-
-  mNoReplicas.reset(new FileSystemHandler(mExecutor.get(), pQcl, pFlusher, IsNoReplicaListTag() ));
+  eos_static_info("msg=\"FileSystemView loadFromBackend\" duration=%llus",
+                  duration.count());
+  mNoReplicas.reset(new FileSystemHandler(mExecutor.get(), pQcl, pFlusher,
+                                          IsNoReplicaListTag()));
 }
 
 //------------------------------------------------------------------------------
@@ -85,7 +84,6 @@ FileSystemView::fileMDChanged(IFileMDChangeListener::Event* e)
   qclient::QSet fs_set;
 
   switch (e->action) {
-
   //----------------------------------------------------------------------------
   // New file has been created
   //----------------------------------------------------------------------------
@@ -108,9 +106,8 @@ FileSystemView::fileMDChanged(IFileMDChangeListener::Event* e)
   // Add location
   //----------------------------------------------------------------------------
   case IFileMDChangeListener::LocationAdded: {
-    FileSystemHandler *handler = initializeRegularFilelist(e->location);
+    FileSystemHandler* handler = initializeRegularFilelist(e->location);
     handler->insert(file->getIdentifier());
-
     mNoReplicas->erase(file->getIdentifier());
     break;
   }
@@ -127,8 +124,9 @@ FileSystemView::fileMDChanged(IFileMDChangeListener::Event* e)
       mNoReplicas->insert(file->getIdentifier());
     }
 
-    FileSystemHandler *handlerUnlinked = fetchUnlinkedFilelistIfExists(e->location);
-    if(handlerUnlinked) {
+    FileSystemHandler* handlerUnlinked = fetchUnlinkedFilelistIfExists(e->location);
+
+    if (handlerUnlinked) {
       handlerUnlinked->erase(file->getIdentifier());
     }
 
@@ -145,9 +143,9 @@ FileSystemView::fileMDChanged(IFileMDChangeListener::Event* e)
   case IFileMDChangeListener::LocationUnlinked: {
     FileSystemHandler* handlerUnlinked = initializeUnlinkedFilelist(e->location);
     handlerUnlinked->insert(file->getIdentifier());
-
     FileSystemHandler* handlerRegular = fetchRegularFilelistIfExists(e->location);
-    if(handlerRegular) {
+
+    if (handlerRegular) {
       handlerRegular->erase(file->getIdentifier());
     }
 
@@ -173,7 +171,6 @@ FileSystemView::fileMDCheck(IFileMD* file)
   std::string cursor {"0"};
   std::pair<std::string, std::vector<std::string>> reply;
   qclient::AsyncHandler ah;
-
   qclient::QSet no_replica_set(*pQcl, fsview::sNoReplicaPrefix);
 
   // If file has no replicas make sure it's accounted for
@@ -237,8 +234,9 @@ std::shared_ptr<ICollectionIterator<IFileMD::location_t>>
 std::shared_ptr<ICollectionIterator<IFileMD::id_t>>
     FileSystemView::getFileList(IFileMD::location_t location)
 {
-  FileSystemHandler *handler = fetchRegularFilelistIfExists(location);
-  if(handler) {
+  FileSystemHandler* handler = fetchRegularFilelistIfExists(location);
+
+  if (handler) {
     return handler->getFileList();
   }
 
@@ -248,11 +246,13 @@ std::shared_ptr<ICollectionIterator<IFileMD::id_t>>
 //----------------------------------------------------------------------------
 // Get an approximately random file residing within the given filesystem.
 //----------------------------------------------------------------------------
-bool FileSystemView::getApproximatelyRandomFileInFs(IFileMD::location_t location,
-    IFileMD::id_t &retval)
+bool FileSystemView::getApproximatelyRandomFileInFs(IFileMD::location_t
+    location,
+    IFileMD::id_t& retval)
 {
-  FileSystemHandler *handler = fetchRegularFilelistIfExists(location);
-  if(handler) {
+  FileSystemHandler* handler = fetchRegularFilelistIfExists(location);
+
+  if (handler) {
     return handler->getApproximatelyRandomFile(retval);
   }
 
@@ -265,8 +265,9 @@ bool FileSystemView::getApproximatelyRandomFileInFs(IFileMD::location_t location
 std::shared_ptr<ICollectionIterator<IFileMD::id_t>>
     FileSystemView::getUnlinkedFileList(IFileMD::location_t location)
 {
-  FileSystemHandler *handlerUnlinked = fetchUnlinkedFilelistIfExists(location);
-  if(handlerUnlinked) {
+  FileSystemHandler* handlerUnlinked = fetchUnlinkedFilelistIfExists(location);
+
+  if (handlerUnlinked) {
     return handlerUnlinked->getFileList();
   }
 
@@ -297,8 +298,9 @@ FileSystemView::getNumNoReplicasFiles()
 uint64_t
 FileSystemView::getNumFilesOnFs(IFileMD::location_t fs_id)
 {
-  FileSystemHandler *handler = fetchRegularFilelistIfExists(fs_id);
-  if(handler) {
+  FileSystemHandler* handler = fetchRegularFilelistIfExists(fs_id);
+
+  if (handler) {
     return handler->size();
   }
 
@@ -311,8 +313,9 @@ FileSystemView::getNumFilesOnFs(IFileMD::location_t fs_id)
 uint64_t
 FileSystemView::getNumUnlinkedFilesOnFs(IFileMD::location_t fs_id)
 {
-  FileSystemHandler *handlerUnlinked = fetchUnlinkedFilelistIfExists(fs_id);
-  if(handlerUnlinked) {
+  FileSystemHandler* handlerUnlinked = fetchUnlinkedFilelistIfExists(fs_id);
+
+  if (handlerUnlinked) {
     return handlerUnlinked->size();
   }
 
@@ -325,8 +328,9 @@ FileSystemView::getNumUnlinkedFilesOnFs(IFileMD::location_t fs_id)
 bool
 FileSystemView::hasFileId(IFileMD::id_t fid, IFileMD::location_t fs_id)
 {
-  FileSystemHandler *handler = fetchRegularFilelistIfExists(fs_id);
-  if(handler) {
+  FileSystemHandler* handler = fetchRegularFilelistIfExists(fs_id);
+
+  if (handler) {
     return handler->hasFileId(fid);
   }
 
@@ -339,8 +343,9 @@ FileSystemView::hasFileId(IFileMD::id_t fid, IFileMD::location_t fs_id)
 bool
 FileSystemView::clearUnlinkedFileList(IFileMD::location_t location)
 {
-  FileSystemHandler *handlerUnlinked = fetchUnlinkedFilelistIfExists(location);
-  if(!handlerUnlinked) {
+  FileSystemHandler* handlerUnlinked = fetchUnlinkedFilelistIfExists(location);
+
+  if (!handlerUnlinked) {
     return false;
   }
 
@@ -446,18 +451,19 @@ FileSystemView::loadFromBackend()
 //!
 //! @param fsid file system id
 //------------------------------------------------------------------------------
-FileSystemHandler* FileSystemView::initializeRegularFilelist(IFileMD::location_t fsid)
+FileSystemHandler* FileSystemView::initializeRegularFilelist(
+  IFileMD::location_t fsid)
 {
   std::unique_lock<std::mutex> lock(mMutex);
-
   auto iter = mFiles.find(fsid);
 
-  if(iter != mFiles.end()) {
+  if (iter != mFiles.end()) {
     // Found
     return iter->second.get();
   }
 
-  mFiles[fsid].reset(new FileSystemHandler(fsid, mExecutor.get(), pQcl, pFlusher, false));
+  mFiles[fsid].reset(new FileSystemHandler(fsid, mExecutor.get(), pQcl, pFlusher,
+                     false));
   return mFiles[fsid].get();
 }
 
@@ -467,13 +473,13 @@ FileSystemHandler* FileSystemView::initializeRegularFilelist(IFileMD::location_t
 //!
 //! @param fsid file system id
 //------------------------------------------------------------------------------
-FileSystemHandler* FileSystemView::fetchRegularFilelistIfExists(IFileMD::location_t fsid)
+FileSystemHandler* FileSystemView::fetchRegularFilelistIfExists(
+  IFileMD::location_t fsid)
 {
   std::unique_lock<std::mutex> lock(mMutex);
-
   auto iter = mFiles.find(fsid);
 
-  if(iter == mFiles.end()) {
+  if (iter == mFiles.end()) {
     return nullptr;
   }
 
@@ -488,18 +494,19 @@ FileSystemHandler* FileSystemView::fetchRegularFilelistIfExists(IFileMD::locatio
 //!
 //! @param fsid file system id
 //------------------------------------------------------------------------------
-FileSystemHandler* FileSystemView::initializeUnlinkedFilelist(IFileMD::location_t fsid)
+FileSystemHandler* FileSystemView::initializeUnlinkedFilelist(
+  IFileMD::location_t fsid)
 {
   std::unique_lock<std::mutex> lock(mMutex);
-
   auto iter = mUnlinkedFiles.find(fsid);
 
-  if(iter != mUnlinkedFiles.end()) {
+  if (iter != mUnlinkedFiles.end()) {
     // Found
     return iter->second.get();
   }
 
-  mUnlinkedFiles[fsid].reset(new FileSystemHandler(fsid, mExecutor.get(), pQcl, pFlusher, true));
+  mUnlinkedFiles[fsid].reset(new FileSystemHandler(fsid, mExecutor.get(), pQcl,
+                             pFlusher, true));
   return mUnlinkedFiles[fsid].get();
 }
 
@@ -509,13 +516,13 @@ FileSystemHandler* FileSystemView::initializeUnlinkedFilelist(IFileMD::location_
 //!
 //! @param fsid file system id
 //------------------------------------------------------------------------------
-FileSystemHandler* FileSystemView::fetchUnlinkedFilelistIfExists(IFileMD::location_t fsid)
+FileSystemHandler* FileSystemView::fetchUnlinkedFilelistIfExists(
+  IFileMD::location_t fsid)
 {
   std::unique_lock<std::mutex> lock(mMutex);
-
   auto iter = mUnlinkedFiles.find(fsid);
 
-  if(iter == mUnlinkedFiles.end()) {
+  if (iter == mUnlinkedFiles.end()) {
     return nullptr;
   }
 
