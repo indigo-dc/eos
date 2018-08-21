@@ -1360,7 +1360,6 @@ public:
   std::map<eos::common::FileSystem::fsid_t, time_t> ScheduledToBalanceFid;
   //! Mutex protecting ScheduledToBalanceFid
   XrdSysMutex ScheduledToBalanceFidMutex;
-  time_t StartTime; ///< out starttime
   char* HostName; ///< our hostname as derived in XrdOfs
   char* HostPref; ///< our hostname as derived in XrdOfs without domain
 
@@ -1376,6 +1375,7 @@ public:
   std::atomic<int> mInitialized; ///< Initialization state of the namespace
   std::atomic<time_t> mFileInitTime; ///< Time for the file initialization
   std::atomic<time_t> mTotalInitTime; ///< Time for entire initialization
+  std::atomic<time_t> mStartTime; ///< Timestamp when daemon started
   bool Shutdown; ///< true if the shutdown function was called => avoid to join some threads
   //! Const strings to print the namespace boot state as in eNamespace
   static const char* gNameSpaceState[];
