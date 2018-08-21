@@ -1633,8 +1633,19 @@ XrdMgmOfsFile::open(const char* inpath,
 
       if (!gOFS->mMaster->IsMaster() && gOFS->mMaster->IsRemoteMasterOk()) {
         // redirect ENONET to an alive remote master
-        redirectionhost = gOFS->mMaster->GetMasterHost();
-        ecode = 1094;
+        int port {0};
+        std::string hostname;
+        std::string master_id = gOFS->mMaster->GetMasterId();
+
+        if (!eos::common::ParseHostNamePort(mastr_id, hostname, port)) {
+          eos_err("msg=\"failed parsing remote master info\", id=%s",
+                  master_id.c_str());
+          return Emsg(epname, error, retc, "open file - failed parsing remote "
+                      "master info", path);
+        }
+
+        redirectionhost = hostname.c_str();
+        ecode = port;
         rcode = SFS_REDIRECT;
         error.setErrInfo(ecode, redirectionhost.c_str());
         gOFS->MgmStats.Add("RedirectENONET", vid.uid, vid.gid, 1);
@@ -1780,7 +1791,8 @@ XrdMgmOfsFile::open(const char* inpath,
           if (std::find(unavailfs.begin(), unavailfs.end(),
                         selectedfs[k]) == unavailfs.end()) {
             // take the highest fsid with the same geotag if possible
-            if ((vid.geolocation.empty() || (fsgeotag.find(vid.geolocation) != std::string::npos)) &&
+            if ((vid.geolocation.empty() ||
+                 (fsgeotag.find(vid.geolocation) != std::string::npos)) &&
                 (selectedfs[k] > fsid)) {
               fsIndex = k;
               fsid = selectedfs[k];
